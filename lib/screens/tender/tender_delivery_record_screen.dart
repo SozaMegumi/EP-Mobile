@@ -1,83 +1,94 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../models/app_models.dart';
+
+import '../../data/app_store.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/format.dart';
 import '../../widgets/brand_app_bar.dart';
 import '../../widgets/common_widgets.dart';
+import '../../widgets/feedback.dart';
 import '../../widgets/primary_button.dart';
 
 /// V18 - Rekod penghantaran tawaran (Tender delivery record)
 class TenderDeliveryRecordScreen extends StatelessWidget {
-  const TenderDeliveryRecordScreen({super.key});
+  /// Tender to show (from `?id=`); falls back to the last submitted tender.
+  final String? tenderId;
+  const TenderDeliveryRecordScreen({super.key, this.tenderId});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const BrandAppBar(showBack: true),
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        children: [
-          const Text('Rekod penghantaran',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-          const SizedBox(height: AppSpacing.xs),
-          const Text('INV-CONTOH-001',
-              style: TextStyle(color: AppColors.grey500, fontSize: 12)),
-          const SizedBox(height: AppSpacing.lg),
-          const Card(
-            child: Padding(
-              padding: EdgeInsets.all(AppSpacing.lg),
-              child: Column(
+    final store = AppStore.instance;
+    return ListenableBuilder(
+      listenable: store,
+      builder: (context, _) {
+        final t = store.tenderById((tenderId == null || tenderId!.isEmpty)
+            ? store.lastTenderId
+            : tenderId!);
+        if (t == null) {
+          return NotFoundScaffold(
+            message: 'Tawaran tidak dijumpai',
+            backLabel: 'Kembali ke tawaran',
+            onBack: () => context.go('/tawaran-saya'),
+          );
+        }
+        final inv = store.invitationById(t.invitationId);
+        return Scaffold(
+          appBar: BrandAppBar(
+              showBack: true, onBack: () => context.go('/tawaran-saya')),
+          body: ListView(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            children: [
+              Row(
                 children: [
-                  DetailRow(label: 'Nama tawaran', value: 'Bekalan kertas A4'),
-                  Divider(),
-                  DetailRow(label: 'Kuantiti', value: '50 rim'),
-                  Divider(),
-                  DetailRow(
-                      label: 'Jumlah tawaran',
-                      value: 'RM2,308.00',
-                      emphasize: true),
+                  const Expanded(
+                    child: Text('Rekod penghantaran',
+                        style: TextStyle(
+                            fontSize: 20, fontWeight: FontWeight.w800)),
+                  ),
+                  StatusPill(label: t.status),
                 ],
               ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          const SectionLabel('Status penghantaran'),
-          const Card(
-            child: Padding(
-              padding: EdgeInsets.all(AppSpacing.lg),
-              child: StatusTimeline(
-                steps: [
-                  TimelineStep(
-                    title: 'Tawaran disediakan',
-                    subtitle: '14 Okt 2026 · 08:30 pagi',
-                    done: true,
+              const SizedBox(height: AppSpacing.xs),
+              Text(t.id,
+                  style:
+                      const TextStyle(color: AppColors.grey500, fontSize: 12)),
+              const SizedBox(height: AppSpacing.lg),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Column(
+                    children: [
+                      DetailRow(label: 'Nama tawaran', value: t.title),
+                      const Divider(),
+                      DetailRow(
+                          label: 'Kuantiti',
+                          value: '${t.quantity} ${inv?.unit ?? 'unit'}'),
+                      const Divider(),
+                      DetailRow(
+                          label: 'Jumlah tawaran',
+                          value: Fmt.rm(t.amount),
+                          emphasize: true),
+                    ],
                   ),
-                  TimelineStep(
-                    title: 'Tawaran dihantar',
-                    subtitle: '14 Okt 2026 · 09:00 pagi',
-                    done: true,
-                  ),
-                  TimelineStep(
-                    title: 'Penilaian',
-                    subtitle: 'Dalam proses',
-                    done: false,
-                  ),
-                  TimelineStep(
-                    title: 'Keputusan',
-                    subtitle: 'Menunggu',
-                    done: false,
-                  ),
-                ],
+                ),
               ),
-            ),
+              const SizedBox(height: AppSpacing.lg),
+              const SectionLabel('Status penghantaran'),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: StatusTimeline(steps: store.tenderTimeline(t)),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              SecondaryButton(
+                label: 'Kembali ke tawaran',
+                onPressed: () => context.go('/tawaran-saya'),
+              ),
+            ],
           ),
-          const SizedBox(height: AppSpacing.xl),
-          SecondaryButton(
-            label: 'Kembali ke tawaran',
-            onPressed: () => context.go('/tawaran-saya'),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

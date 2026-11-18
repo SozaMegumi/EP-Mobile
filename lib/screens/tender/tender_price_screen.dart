@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../data/app_store.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/format.dart';
+import '../../utils/validators.dart';
 import '../../widgets/common_widgets.dart';
+import '../../widgets/feedback.dart';
 import '../../widgets/primary_button.dart';
 import 'tender_step_scaffold.dart';
 
@@ -14,11 +19,19 @@ class TenderPriceScreen extends StatefulWidget {
 }
 
 class _TenderPriceScreenState extends State<TenderPriceScreen> {
-  final _unitCtrl = TextEditingController(text: '23.00');
-  static const int _qty = 50;
+  final _store = AppStore.instance;
+  final _formKey = GlobalKey<FormState>();
+  late final _unitCtrl = TextEditingController(
+    text: _store.draft.unitPrice == null
+        ? ''
+        : _store.draft.unitPrice!.toStringAsFixed(2),
+  );
 
-  double get _unit => double.tryParse(_unitCtrl.text) ?? 0;
+  int get _qty => _store.draft.quantity ?? 0;
+  double get _unit => Validators.parseAmount(_unitCtrl.text) ?? 0;
   double get _total => _unit * _qty;
+  String get _unitLabel =>
+      _store.invitationById(_store.draft.invitationId)?.unit ?? 'unit';
 
   @override
   void initState() {
@@ -32,20 +45,47 @@ class _TenderPriceScreenState extends State<TenderPriceScreen> {
     super.dispose();
   }
 
-  String _rm(double v) => 'RM${v.toStringAsFixed(2)}';
+  void _keep() {
+    final v = Validators.parseAmount(_unitCtrl.text);
+    if (v != null && v > 0) {
+      _store.updateDraft(unitPrice: v);
+    } else if (_unitCtrl.text.trim().isEmpty) {
+      _store.updateDraft(clearPrice: true);
+    }
+  }
+
+  void _next() {
+    if (!_formKey.currentState!.validate()) return;
+    _keep();
+    context.go('/tawaran/baru/dokumen');
+  }
+
+  Future<void> _saveDraft() async {
+    _keep();
+    final t = await runAction(context, _store.saveDraftTender);
+    if (t != null && mounted) showToast(context, 'Draf disimpan');
+  }
 
   @override
   Widget build(BuildContext context) {
     return TenderStepScaffold(
       stepIndex: 1,
       title: 'Tawaran harga',
-      onBack: () => context.go('/tawaran/baru/spesifikasi'),
+      onBack: () {
+        _keep();
+        context.go('/tawaran/baru/spesifikasi');
+      },
       content: [
-        LabeledField(
-          label: 'Harga seunit (RM)',
-          child: TextField(
-            controller: _unitCtrl,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        Form(
+          key: _formKey,
+          child: LabeledField(
+            label: 'Harga seunit (RM)',
+            child: TextFormField(
+              controller: _unitCtrl,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              validator: (v) => Validators.amount(v, 'Harga seunit'),
+            ),
           ),
         ),
         Card(
@@ -54,13 +94,13 @@ class _TenderPriceScreenState extends State<TenderPriceScreen> {
             child: Column(
               children: [
                 const SectionLabel('Ringkasan harga'),
-                const DetailRow(label: 'Kuantiti', value: '$_qty rim'),
+                DetailRow(label: 'Kuantiti', value: '$_qty $_unitLabel'),
                 const Divider(),
-                DetailRow(label: 'Harga seunit', value: _rm(_unit)),
+                DetailRow(label: 'Harga seunit', value: Fmt.rm(_unit)),
                 const Divider(),
                 DetailRow(
                   label: 'Jumlah tawaran',
-                  value: _rm(_total),
+                  value: Fmt.rm(_total),
                   emphasize: true,
                 ),
               ],
@@ -71,13 +111,12 @@ class _TenderPriceScreenState extends State<TenderPriceScreen> {
       actions: [
         PrimaryButton(
           label: 'Seterusnya: Dokumen',
-          onPressed: () => context.go('/tawaran/baru/dokumen'),
+          onPressed: _next,
         ),
         const SizedBox(height: AppSpacing.sm),
         SecondaryButton(
           label: 'Simpan draf',
-          onPressed: () => ScaffoldMessenger.of(context)
-              .showSnackBar(const SnackBar(content: Text('Draf disimpan'))),
+          onPressed: _saveDraft,
         ),
       ],
     );

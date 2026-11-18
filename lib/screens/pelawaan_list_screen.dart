@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../data/dummy_data.dart';
+import '../data/app_store.dart';
 import '../models/app_models.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_bottom_nav.dart';
@@ -22,7 +22,7 @@ class _PelawaanListScreenState extends State<PelawaanListScreen> {
   static const _tabs = ['Semua', 'Baru', 'Tutup'];
 
   List<Invitation> get _filtered {
-    return DummyData.invitations.where((inv) {
+    return AppStore.instance.invitations.where((inv) {
       final matchesTab = switch (_tab) {
         1 => inv.status == InvitationStatus.baru,
         2 => inv.status == InvitationStatus.tutup,
@@ -86,7 +86,7 @@ class _PelawaanListScreenState extends State<PelawaanListScreen> {
           Expanded(
             child: _filtered.isEmpty
                 ? const Center(
-                    child: Text('Tiada pelawaan',
+                    child: Text('Tiada pelawaan dijumpai',
                         style: TextStyle(color: AppColors.grey500)),
                   )
                 : ListView.separated(

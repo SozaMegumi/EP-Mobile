@@ -1,21 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
+import '../data/app_store.dart';
 import '../models/app_models.dart';
 import '../theme/app_theme.dart';
+import '../utils/format.dart';
 import '../widgets/brand_app_bar.dart';
 import '../widgets/common_widgets.dart';
+import '../widgets/feedback.dart';
 import '../widgets/primary_button.dart';
 
 /// V19 - Pesanan diterima pembekal (Order accepted by supplier)
 class PesananAcceptedScreen extends StatelessWidget {
   final String orderId;
-
   const PesananAcceptedScreen({super.key, required this.orderId});
 
   @override
   Widget build(BuildContext context) {
+    final store = AppStore.instance;
+    final order = store.orderById(orderId);
+    if (order == null) {
+      return NotFoundScaffold(
+        message: 'Pesanan tidak dijumpai',
+        backLabel: 'Kembali ke pesanan',
+        onBack: () => context.go('/pesanan'),
+      );
+    }
+    if (order.status != Statuses.orderAccepted) {
+      // Not accepted yet: send the user to the detail page to accept.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) context.go('/pesanan/${order.id}');
+      });
+      return const Scaffold(body: SizedBox.shrink());
+    }
     return Scaffold(
-      appBar: const BrandAppBar(showBack: true),
+      appBar: BrandAppBar(
+          showBack: true, onBack: () => context.go('/pesanan/${order.id}')),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
@@ -38,22 +58,22 @@ class PesananAcceptedScreen extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.xs),
           Center(
-            child: Text(orderId,
+            child: Text(order.poNumber,
                 style: const TextStyle(color: AppColors.grey500, fontSize: 12)),
           ),
           const SizedBox(height: AppSpacing.xl),
-          const Card(
+          Card(
             child: Padding(
-              padding: EdgeInsets.all(AppSpacing.lg),
+              padding: const EdgeInsets.all(AppSpacing.lg),
               child: Column(
                 children: [
-                  DetailRow(label: 'Item', value: 'Toner pencetak'),
-                  Divider(),
-                  DetailRow(label: 'Kuantiti', value: '6 unit'),
-                  Divider(),
+                  DetailRow(label: 'Item', value: order.title),
+                  const Divider(),
+                  DetailRow(label: 'Kuantiti', value: '${order.quantity} unit'),
+                  const Divider(),
                   DetailRow(
                       label: 'Jumlah pesanan',
-                      value: 'RM1,800.00',
+                      value: Fmt.rm(order.amount),
                       emphasize: true),
                 ],
               ),
@@ -61,22 +81,22 @@ class PesananAcceptedScreen extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.lg),
           const SectionLabel('Langkah seterusnya'),
-          const Card(
+          Card(
             child: Padding(
-              padding: EdgeInsets.all(AppSpacing.lg),
+              padding: const EdgeInsets.all(AppSpacing.lg),
               child: StatusTimeline(
                 steps: [
                   TimelineStep(
                     title: 'Pesanan diterima',
-                    subtitle: 'Selesai',
+                    subtitle: 'Selesai · ${order.acceptedAt}',
                     done: true,
                   ),
-                  TimelineStep(
+                  const TimelineStep(
                     title: 'Penghantaran barang',
                     subtitle: 'Sediakan penghantaran',
                     done: false,
                   ),
-                  TimelineStep(
+                  const TimelineStep(
                     title: 'Penyediaan invois',
                     subtitle: 'Selepas penghantaran',
                     done: false,
@@ -88,7 +108,7 @@ class PesananAcceptedScreen extends StatelessWidget {
           const SizedBox(height: AppSpacing.xl),
           PrimaryButton(
             label: 'Sediakan invois',
-            onPressed: () => context.go('/invois/baru'),
+            onPressed: () => context.go('/invois/baru?order=${order.id}'),
           ),
           const SizedBox(height: AppSpacing.md),
           SecondaryButton(

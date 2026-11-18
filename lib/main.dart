@@ -1,38 +1,29 @@
 import 'package:flutter/material.dart';
-import 'package:mysql1/mysql1.dart';
+import 'package:go_router/go_router.dart';
 
+import 'data/app_store.dart';
 import 'router/app_router.dart';
 import 'theme/app_theme.dart';
+import 'widgets/feedback.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-
-  await _testDatabaseConnection();
-  runApp(const FindProcurementApp());
+  final store = AppStore.instance;
+  store.load(); // the app shows a loading indicator until this completes
+  runApp(FindProcurementApp(store: store));
 }
 
-Future<void> _testDatabaseConnection() async {
-  final settings = ConnectionSettings(
-    host: '10.0.2.2', // 10.0.2.2 points to localhost (XAMPP/MySQL) from Android Emulator
-    port: 3307,
-    user: 'root',
-    password: '',     // Default XAMPP password
-    db: 'uitm_intern_db',
-  );
+/// UiTM Mobile eProcurement: PEMBEKAL (supplier) flow plus admin flow.
+class FindProcurementApp extends StatefulWidget {
+  final AppStore store;
+  const FindProcurementApp({super.key, required this.store});
 
-  try {
-    final conn = await MySqlConnection.connect(settings);
-    debugPrint('✅ MySQL Connected successfully!');
-    await conn.close();
-  } catch (e) {
-    debugPrint('❌ Connection failed: $e');
-  }
+  @override
+  State<FindProcurementApp> createState() => _FindProcurementAppState();
 }
 
-
-/// UiTM Mobile eProcurement — PEMBEKAL (Supplier) flow.
-class FindProcurementApp extends StatelessWidget {
-  const FindProcurementApp({super.key});
+class _FindProcurementAppState extends State<FindProcurementApp> {
+  late final GoRouter _router = AppRouter.create(widget.store);
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +31,29 @@ class FindProcurementApp extends StatelessWidget {
       title: 'FindProcurement+',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      routerConfig: AppRouter.router,
+      routerConfig: _router,
+      builder: (context, child) {
+        return ListenableBuilder(
+          listenable: widget.store,
+          builder: (context, _) {
+            switch (widget.store.loadState) {
+              case LoadState.loading:
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              case LoadState.error:
+                return Scaffold(
+                  body: ErrorState(
+                    message: widget.store.errorMessage,
+                    onRetry: widget.store.load,
+                  ),
+                );
+              case LoadState.ready:
+                return child ?? const SizedBox.shrink();
+            }
+          },
+        );
+      },
     );
   }
 }

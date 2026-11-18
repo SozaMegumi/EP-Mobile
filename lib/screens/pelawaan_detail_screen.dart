@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../data/dummy_data.dart';
+import '../data/app_store.dart';
 import '../models/app_models.dart';
 import '../theme/app_theme.dart';
 import '../widgets/brand_app_bar.dart';
 import '../widgets/common_widgets.dart';
+import '../widgets/feedback.dart';
 import '../widgets/primary_button.dart';
 
 /// V03 - Butiran pelawaan (Invitation detail)
@@ -15,13 +16,21 @@ class PelawaanDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final inv = DummyData.invitations.firstWhere(
-      (e) => e.id == invitationId,
-      orElse: () => DummyData.invitations.first,
-    );
+    final store = AppStore.instance;
+    final inv = store.invitationById(invitationId);
+    if (inv == null) {
+      return NotFoundScaffold(
+        message: 'Pelawaan tidak dijumpai',
+        backLabel: 'Kembali ke pelawaan',
+        onBack: () => context.go('/pelawaan'),
+      );
+    }
+    final filed = store.filedTenderFor(inv.id);
+    final saved = store.draftTenderFor(inv.id);
 
     return Scaffold(
-      appBar: BrandAppBar(showBack: true, onBack: () => context.go('/pelawaan')),
+      appBar:
+          BrandAppBar(showBack: true, onBack: () => context.go('/pelawaan')),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
@@ -50,21 +59,20 @@ class PelawaanDetailScreen extends StatelessWidget {
                   const Divider(),
                   DetailRow(label: 'Lokasi', value: inv.location),
                   const Divider(),
-                  const DetailRow(label: 'Kuantiti', value: '50 rim'),
+                  DetailRow(
+                      label: 'Kuantiti', value: '${inv.quantity} ${inv.unit}'),
                 ],
               ),
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
           const SectionLabel('Butiran bekalan'),
-          const Card(
+          Card(
             child: Padding(
-              padding: EdgeInsets.all(AppSpacing.lg),
+              padding: const EdgeInsets.all(AppSpacing.lg),
               child: Text(
-                'Pembekalan kertas A4 80gsm berwarna putih untuk kegunaan '
-                'pejabat. Pembekal perlu menyediakan tawaran mengikut '
-                'spesifikasi teknikal dan harga yang ditetapkan.',
-                style: TextStyle(color: AppColors.grey700, height: 1.5),
+                inv.description,
+                style: const TextStyle(color: AppColors.grey700, height: 1.5),
               ),
             ),
           ),
@@ -88,10 +96,22 @@ class PelawaanDetailScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.xl),
-          if (inv.status != InvitationStatus.tutup)
+          if (filed != null)
             PrimaryButton(
-              label: 'Sediakan tawaran',
-              onPressed: () => context.go('/tawaran/baru/spesifikasi?inv=${inv.id}'),
+              label: 'Lihat tawaran saya',
+              onPressed: () => context.go('/tawaran/rekod?id=${filed.id}'),
+            )
+          else if (inv.status != InvitationStatus.tutup)
+            PrimaryButton(
+              label: saved != null ? 'Sambung tawaran' : 'Sediakan tawaran',
+              onPressed: () {
+                try {
+                  store.startDraft(inv.id);
+                  context.go('/tawaran/baru/spesifikasi?inv=${inv.id}');
+                } on StoreException catch (e) {
+                  showToast(context, e.message);
+                }
+              },
             ),
           const SizedBox(height: AppSpacing.md),
           SecondaryButton(

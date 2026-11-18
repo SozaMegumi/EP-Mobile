@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../data/app_store.dart';
+import '../screens/admin/admin_home_screen.dart';
+import '../screens/admin/admin_invoices_screen.dart';
+import '../screens/admin/admin_orders_screen.dart';
+import '../screens/admin/admin_tender_detail_screen.dart';
+import '../screens/admin/admin_tenders_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/notifications_screen.dart';
@@ -26,8 +32,10 @@ import '../screens/tender/tender_success_screen.dart';
 class AppRouter {
   AppRouter._();
 
-  static final GoRouter router = GoRouter(
+  static GoRouter create(AppStore store) => GoRouter(
     initialLocation: '/login',
+    refreshListenable: store.sessionVersion,
+    redirect: (context, state) => _guard(store, state.uri.path),
     routes: [
       GoRoute(
         path: '/login',
@@ -98,7 +106,29 @@ class AppRouter {
       ),
       GoRoute(
         path: '/tawaran/rekod',
-        builder: (_, __) => const TenderDeliveryRecordScreen(),
+        builder: (_, state) => TenderDeliveryRecordScreen(
+          tenderId: state.uri.queryParameters['id'],
+        ),
+      ),
+
+      // ---- Admin flow ----
+      GoRoute(path: '/admin', builder: (_, __) => const AdminHomeScreen()),
+      GoRoute(
+        path: '/admin/tawaran',
+        builder: (_, __) => const AdminTendersScreen(),
+      ),
+      GoRoute(
+        path: '/admin/tawaran/:id',
+        builder: (_, state) =>
+            AdminTenderDetailScreen(tenderId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/admin/pesanan',
+        builder: (_, __) => const AdminOrdersScreen(),
+      ),
+      GoRoute(
+        path: '/admin/invois',
+        builder: (_, __) => const AdminInvoicesScreen(),
       ),
 
       // ---- Invoice flow ----
@@ -108,7 +138,10 @@ class AppRouter {
       ),
       GoRoute(
         path: '/invois/baru',
-        builder: (_, __) => const InvoiceCreateScreen(),
+        builder: (_, state) => InvoiceCreateScreen(
+          key: ValueKey(state.uri.toString()),
+          orderId: state.uri.queryParameters['order'],
+        ),
       ),
       GoRoute(
         path: '/invois/berjaya',
@@ -124,4 +157,20 @@ class AppRouter {
       body: Center(child: Text('Halaman tidak dijumpai: ${state.uri}')),
     ),
   );
+
+  /// Route guard: login required, role-based areas, wizard needs a draft.
+  static String? _guard(AppStore store, String path) {
+    if (store.loadState != LoadState.ready) return null;
+    if (!store.isLoggedIn) return path == '/login' ? null : '/login';
+    final home = store.isAdmin ? '/admin' : '/home';
+    if (path == '/login' || path == '/') return home;
+    final isAdminPath = path.startsWith('/admin');
+    if (store.isAdmin && !isAdminPath && path != '/notifikasi') return home;
+    if (!store.isAdmin && isAdminPath) return home;
+    if (path.startsWith('/tawaran/baru') &&
+        store.draft.invitationId.isEmpty) {
+      return '/pelawaan';
+    }
+    return null;
+  }
 }

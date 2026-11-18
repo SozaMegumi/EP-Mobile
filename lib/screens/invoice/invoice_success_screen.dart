@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../data/app_store.dart';
 import '../../widgets/brand_app_bar.dart';
 import '../../widgets/common_widgets.dart';
 import '../../widgets/primary_button.dart';
@@ -10,15 +12,18 @@ class InvoiceSuccessScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final store = AppStore.instance;
+    final inv = store.invoiceById(store.lastInvoiceId);
     return Scaffold(
       appBar: const BrandAppBar(),
       body: SuccessView(
         title: 'Invois dihantar',
-        subtitle: 'INV-CONTOH-018\nInvois menunggu semakan kewangan',
+        subtitle: '${inv?.invoiceNo ?? ''}\nInvois menunggu semakan kewangan',
         actions: [
           PrimaryButton(
             label: 'Lihat status',
-            onPressed: () => context.go('/invois/INV-CONTOH-018/status'),
+            onPressed: () => context
+                .go(inv == null ? '/invois' : '/invois/${inv.id}/status'),
           ),
           const SizedBox(height: 12),
           SecondaryButton(

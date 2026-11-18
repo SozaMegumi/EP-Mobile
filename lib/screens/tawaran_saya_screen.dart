@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../data/dummy_data.dart';
+import '../data/app_store.dart';
+import '../models/app_models.dart';
+import '../utils/format.dart';
+import '../widgets/feedback.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../widgets/brand_app_bar.dart';
@@ -21,9 +24,17 @@ class _TawaranSayaScreenState extends State<TawaranSayaScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: AppStore.instance,
+      builder: (context, _) => _build(context),
+    );
+  }
+
+  Widget _build(BuildContext context) {
+    final store = AppStore.instance;
     final filtered = _tab == 1
-        ? DummyData.tenders.where((t) => t.status == 'Dihantar').toList()
-        : DummyData.tenders;
+        ? store.tenders.where((t) => t.status == Statuses.tenderSent).toList()
+        : store.tenders;
 
     return Scaffold(
       appBar: const BrandAppBar(),
@@ -66,9 +77,9 @@ class _TawaranSayaScreenState extends State<TawaranSayaScreen> {
           ),
           Expanded(
             child: filtered.isEmpty
-                ? const Center(
-                    child: Text('Tiada tawaran',
-                        style: TextStyle(color: AppColors.grey500)))
+                ? const EmptyState(
+                    'Tiada tawaran lagi. Pilih pelawaan untuk menyediakan tawaran.',
+                    icon: Icons.description_outlined)
                 : ListView.separated(
                     padding: const EdgeInsets.all(AppSpacing.lg),
                     itemCount: filtered.length,
@@ -80,7 +91,19 @@ class _TawaranSayaScreenState extends State<TawaranSayaScreen> {
                         child: InkWell(
                           borderRadius:
                               BorderRadius.circular(AppSpacing.radius),
-                          onTap: () => context.go('/tawaran/rekod'),
+                          onTap: () {
+                            if (t.status == Statuses.tenderDraft) {
+                              try {
+                                store.loadDraftFromTender(t.id);
+                                context.go(
+                                    '/tawaran/baru/spesifikasi?inv=${t.invitationId}');
+                              } on StoreException catch (e) {
+                                showToast(context, e.message);
+                              }
+                            } else {
+                              context.go('/tawaran/rekod?id=${t.id}');
+                            }
+                          },
                           child: Padding(
                             padding: const EdgeInsets.all(AppSpacing.lg),
                             child: Column(
@@ -105,13 +128,16 @@ class _TawaranSayaScreenState extends State<TawaranSayaScreen> {
                                 const SizedBox(height: AppSpacing.sm),
                                 Row(
                                   children: [
-                                    Text('Dihantar: ${t.submittedDate}',
+                                    Text(
+                                        t.status == Statuses.tenderDraft
+                                            ? 'Belum dihantar'
+                                            : 'Dihantar: ${t.submittedDate}',
                                         style: const TextStyle(
                                             color: AppColors.grey700,
                                             fontSize: 12)),
                                     const Spacer(),
                                     Text(
-                                      'RM${t.amount.toStringAsFixed(2)}',
+                                      Fmt.rm(t.amount),
                                       style: const TextStyle(
                                           fontWeight: FontWeight.w700,
                                           fontSize: 14),
