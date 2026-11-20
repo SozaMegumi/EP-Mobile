@@ -6,6 +6,7 @@ class AppColors {
   AppColors._();
 
   static const Color black = Color(0xFF111111);
+  static const Color uitmPurple = Color(0xFF582C83);
   static const Color white = Color(0xFFFFFFFF);
   static const Color grey900 = Color(0xFF1A1A1A);
   static const Color grey700 = Color(0xFF4A4A4A);
@@ -42,7 +43,7 @@ class AppTheme {
     return base.copyWith(
       scaffoldBackgroundColor: AppColors.scaffold,
       colorScheme: const ColorScheme.light(
-        primary: AppColors.black,
+        primary: AppColors.uitmPurple,
         onPrimary: AppColors.white,
         secondary: AppColors.grey700,
         surface: AppColors.white,
@@ -87,12 +88,12 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSpacing.radius),
-          borderSide: const BorderSide(color: AppColors.black, width: 1.5),
+          borderSide: const BorderSide(color: AppColors.uitmPurple, width: 1.5),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.black,
+          backgroundColor: AppColors.uitmPurple,
           foregroundColor: AppColors.white,
           minimumSize: const Size.fromHeight(50),
           elevation: 0,
@@ -104,9 +105,9 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.black,
+          foregroundColor: AppColors.uitmPurple,
           minimumSize: const Size.fromHeight(50),
-          side: const BorderSide(color: AppColors.black),
+          side: const BorderSide(color: AppColors.uitmPurple),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppSpacing.radius),
           ),
@@ -114,7 +115,7 @@ class AppTheme {
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(foregroundColor: AppColors.black),
+        style: TextButton.styleFrom(foregroundColor: AppColors.uitmPurple),
       ),
       dividerTheme: const DividerThemeData(
         color: AppColors.grey200,
